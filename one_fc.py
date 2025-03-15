@@ -58,69 +58,6 @@ class ModifiedLlama(nn.Module):
 # Replace original model with modified model
 modified_model = ModifiedLlama(model)
 
-class ModifiedLlama(nn.Module):
-    def __init__(self, original_model, hidden_size=4096):
-        super().__init__()
-        self.original_model = original_model
-        # Initialize extra_fc with bfloat16 dtype
-        self.extra_fc = nn.Linear(hidden_size, hidden_size, dtype=torch.bfloat16)  # New FC layer
-
-        # create a separate copy of lm_head to avoid weight tying issues
-        self.lm_head = nn.Linear(hidden_size, original_model.lm_head.out_features, bias=False, dtype=torch.bfloat16)
-        self.lm_head.weight.data = original_model.lm_head.weight.clone().type(torch.bfloat16)  # Copy weights and cast to bfloat16
-
-    def forward(self, input_ids, attention_mask=None, labels=None):
-        with torch.no_grad():  # Freeze original model
-            outputs = self.original_model.model(input_ids, attention_mask=attention_mask)
-
-        hidden_states = outputs.last_hidden_state  # Get hidden states
-        transformed_hidden_states = self.extra_fc(hidden_states)  # Pass through FC
-        logits = self.lm_head(transformed_hidden_states)  # Pass through new lm_head
-
-        loss = None
-        if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
-            shift_logits = logits[:, :-1, :].contiguous()
-            shift_labels = labels[:, 1:].contiguous()
-            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
-
-        return {"loss": loss, "logits": logits} if loss is not None else {"logits": logits}
-
-        # Replace original model with modified model
-modified_model = ModifiedLlama(model)
-
-class ModifiedLlama(nn.Module):
-    def __init__(self, original_model, hidden_size=4096):
-        super().__init__()
-        self.original_model = original_model
-        # Initialize extra_fc with bfloat16 dtype
-        self.extra_fc = nn.Linear(hidden_size, hidden_size, dtype=torch.bfloat16)  # New FC layer
-
-        # Create a separate copy of lm_head to avoid weight tying issues
-        self.lm_head = nn.Linear(hidden_size, original_model.lm_head.out_features, bias=False, dtype=torch.bfloat16)
-        self.lm_head.weight.data = original_model.lm_head.weight.clone().type(torch.bfloat16)  # Copy weights and cast to bfloat16
-
-    def forward(self, input_ids, attention_mask=None, labels=None):
-        with torch.no_grad():  # Freeze original model
-            outputs = self.original_model.model(input_ids, attention_mask=attention_mask)
-
-        hidden_states = outputs.last_hidden_state  # Get hidden states
-        # Cast hidden_states to bfloat16 to match the dtype of extra_fc
-        transformed_hidden_states = self.extra_fc(hidden_states.type(torch.bfloat16))  # Pass through FC
-        logits = self.lm_head(transformed_hidden_states)  # Pass through new lm_head
-
-        loss = None
-        if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
-            shift_logits = logits[:, :-1, :].contiguous()
-            shift_labels = labels[:, 1:].contiguous()
-            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
-
-        return {"loss": loss, "logits": logits} if loss is not None else {"logits": logits}
-
-# Replace original model with modified model
-modified_model = ModifiedLlama(model)
-
 # Ensure only the extra FC layer is trainable
 for param in modified_model.parameters():
     param.requires_grad = False  # Freeze everything
