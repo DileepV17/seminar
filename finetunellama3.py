@@ -9,10 +9,6 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 tokenizer.pad_token = tokenizer.eos_token
 
-#model = AutoModelForCausalLM.from_pretrained(
-    #model_name, torch_dtype=torch.float16, device_map="auto"
-#)
-
 #loading the ,odel in 4-bit quantization config
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -113,8 +109,7 @@ trainer = Trainer(
 
 )
 
-import torch
-torch.cuda.empty_cache()
+
 
 #start the training
 
